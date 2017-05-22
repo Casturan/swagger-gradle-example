@@ -1,0 +1,90 @@
+import io.swagger.codegen.DefaultGenerator
+import io.swagger.codegen.config.CodegenConfigurator
+
+buildscript {
+  ext {
+    springBootVersion = '1.5.3.RELEASE'
+  }
+  repositories {
+    mavenCentral()
+  }
+  dependencies {
+    classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+    classpath('io.swagger:swagger-codegen:2.2.2')
+  }
+}
+
+apply plugin: 'java'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'idea'
+
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = 1.8
+
+repositories {
+  mavenCentral()
+}
+
+configurations {
+  generatedCompile
+}
+
+dependencies {
+  compile 'org.springframework.boot:spring-boot-starter-data-rest'
+  testCompile 'org.springframework.boot:spring-boot-starter-test'
+  generatedCompile 'org.springframework.boot:spring-boot-starter-data-rest'
+  generatedCompile 'io.springfox:springfox-swagger2:2.5.0'
+  generatedCompile 'io.springfox:springfox-swagger-ui:2.5.0'
+}
+
+def swaggerSourceFile = 'src/main/resources/petstore-minimal.yaml'
+def swaggerTargetFolder = 'src/generated/java'
+
+task generateApi {
+  inputs.file("$projectDir/$swaggerSourceFile")
+  outputs.dir("$projectDir/$swaggerTargetFolder")
+  doLast{
+    def config = new CodegenConfigurator()
+    config.setInputSpec("file:///$projectDir/$swaggerSourceFile")
+    config.setOutputDir("$projectDir")
+    config.setLang('spring')
+    config.setAdditionalProperties([
+        'interfaceOnly' : 'true',
+        'apiPackage'    : 'com.dturan.api',
+        'modelPackage'  : 'com.dturan.model',
+        'sourceFolder'  : swaggerTargetFolder
+    ])
+    new DefaultGenerator().opts(config.toClientOptInput()).generate()
+  }
+}
+
+clean.doFirst {
+  delete("${projectDir}/$swaggerTargetFolder")
+}
+
+sourceSets {
+  generated {
+    compileClasspath = configurations.generatedCompile
+  }
+  main {
+    compileClasspath += generated.output
+    runtimeClasspath += generated.output
+  }
+  test {
+    compileClasspath += generated.output
+    runtimeClasspath += generated.output
+  }
+}
+
+bootRun {
+  classpath += sourceSets.generated.output
+}
+
+jar {
+  from sourceSets.generated.output
+}
+
+compileGeneratedJava.dependsOn generateApi
+classes.dependsOn generatedClasses
+compileJava.dependsOn compileGeneratedJava
+ideaModule.dependsOn generateApi

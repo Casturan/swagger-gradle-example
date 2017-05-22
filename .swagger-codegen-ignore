@@ -1,0 +1,3 @@
+# Ignore the pom.xml and README.md because we don't want swagger to generate them
+pom.xml
+README.md
