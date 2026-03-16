@@ -88,3 +88,20 @@ compileGeneratedJava.dependsOn generateApi
 classes.dependsOn generatedClasses
 compileJava.dependsOn compileGeneratedJava
 ideaModule.dependsOn generateApi
+
+idea.workspace.iws.withXml { provider ->
+  def projectXml = provider.asNode()
+  def componentExternalProjectsManager = projectXml.children().find { component -> component.@name == 'ExternalProjectsManager' }
+  def activationNode = componentExternalProjectsManager.depthFirst().find { node -> node.name() == 'activation' }
+  
+  def afterSync = activationNode.children().find { activation -> activation.name() == 'after_sync' }
+  if (afterSync) {
+    if (!afterSync.children().find { task -> task.@name == 'generateApi' }) {
+      afterSync.appendNode('task', [name: 'generateApi'])
+    }
+  } else {
+    activationNode
+            .appendNode('after_sync')
+            .appendNode('task', [name: 'generateApi'])
+  } 
+}
